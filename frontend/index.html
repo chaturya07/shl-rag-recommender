@@ -665,7 +665,7 @@
         </div>
         <div class="pill">
           <span class="pill-dot"></span>
-          Live · Local API
+          <span id="apiLabel">Live · API</span>
         </div>
       </div>
 
@@ -774,12 +774,17 @@
   </div>
 
   <script>
-    // Auto-detect API URL based on environment
-    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-      ? "http://127.0.0.1:8000/recommend"
-      : "https://shl-rag-api.onrender.com/recommend";  // UPDATE with your Render URL
+    // API URL - local dev falls back to localhost
+    const BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? "http://127.0.0.1:8000"
+      : "https://shl-rag-api.onrender.com";
 
-    const BASE_URL = API_URL.replace("/recommend", "");
+    const API_URL = BASE_URL + "/recommend";
+
+    // Update pill label
+    document.getElementById("apiLabel").textContent = 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? "Live · Local API" : "Live · Cloud API";
 
     // Session ID persisted in localStorage
     let SESSION_ID = localStorage.getItem("shl_session_id");
