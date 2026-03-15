@@ -3,12 +3,7 @@ uvicorn[standard]
 pydantic
 pandas
 numpy
-sentence-transformers
 scikit-learn
+sentence-transformers
+groq
 requests
-beautifulsoup4
-langchain
-langchain-community
-langchain-openai
-faiss-cpu
-openai

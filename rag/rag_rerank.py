@@ -1,35 +1,62 @@
 import os
+import numpy as np
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 from groq import Groq
 
-EMBEDDINGS_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+# Load lightweight data at startup (no heavy ML models)
+_df = None
+_emb = None
+_query_model = None
 
-# Lazy-loaded to avoid OOM crash on startup
-_vectorstore = None
+
+def get_data():
+    global _df, _emb
+    if _df is None:
+        _df = pd.read_csv("data/shl_assessments_cleaned.csv")
+        _emb = np.load("data/embeddings/embeddings.npy")
+    return _df, _emb
 
 
-def get_vectorstore():
-    global _vectorstore
-    if _vectorstore is None:
-        from langchain_community.vectorstores import FAISS
-        from langchain_community.embeddings import HuggingFaceEmbeddings
-        embeddings = HuggingFaceEmbeddings(model_name=EMBEDDINGS_MODEL)
-        _vectorstore = FAISS.load_local(
-            "rag_faiss_index",
-            embeddings,
-            allow_dangerous_deserialization=True
-        )
-    return _vectorstore
+def get_query_model():
+    global _query_model
+    if _query_model is None:
+        from sentence_transformers import SentenceTransformer
+        _query_model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _query_model
 
 
 def rag_recommend(query: str, k: int = 5):
     """
-    1. Retrieve top 20 documents using FAISS
+    1. Retrieve top 20 using pre-computed embeddings (no FAISS, no heavy model load at startup)
     2. Re-rank using Groq LLM
-    3. Fallback to pure retrieval if LLM fails
+    3. Fallback to top retrieval if LLM fails
     """
-    vectorstore = get_vectorstore()
-    docs = vectorstore.similarity_search(query, k=20)
+    df, emb = get_data()
+    model = get_query_model()
 
+    # Encode query and retrieve top 20
+    q_emb = model.encode([query])
+    sims = cosine_similarity(q_emb, emb)[0]
+    df2 = df.copy()
+    df2["score"] = sims
+    df2 = df2[df2["assessment_type"].notna()]
+    top20 = df2.sort_values("score", ascending=False).head(20)
+
+    # Build simple doc-like objects for compatibility
+    class Doc:
+        def __init__(self, row):
+            self.page_content = f"{row['Assessment Name']}: {row.get('description', row['Assessment Name'])}"
+            self.metadata = {
+                "name": row["Assessment Name"],
+                "url": row["URL"],
+                "assessment_type": row.get("assessment_type", "General"),
+                "score": row["score"]
+            }
+
+    docs = [Doc(row) for _, row in top20.iterrows()]
+
+    # Try Groq re-ranking
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         print("⚠️ GROQ_API_KEY not set. Using retrieval only.")
@@ -37,29 +64,23 @@ def rag_recommend(query: str, k: int = 5):
 
     try:
         client = Groq(api_key=api_key)
-
-        context = "\n".join(
-            [f"{i+1}. {doc.page_content}" for i, doc in enumerate(docs)]
-        )
+        context = "\n".join([f"{i+1}. {doc.metadata['name']}" for i, doc in enumerate(docs)])
 
         prompt = f"""You are an expert HR assessment recommendation system.
 
 User query: "{query}"
 
-Below are SHL assessment descriptions:
+Below are candidate SHL assessments:
 {context}
 
-Select the {k} most relevant assessments for the query.
-Return ONLY a numbered list with assessment titles, nothing else.
-Example format:
-1. Assessment Title Here
-2. Another Assessment Title"""
+Select the {k} most relevant assessments for this job role.
+Return ONLY a numbered list of assessment names, nothing else."""
 
         response = client.chat.completions.create(
             model="llama3-8b-8192",
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_tokens=512
+            max_tokens=256
         )
 
         content = response.choices[0].message.content
@@ -72,13 +93,13 @@ Example format:
         final_results = []
         for title in selected_titles:
             for doc in docs:
-                if title.lower() in doc.page_content.lower():
+                if title.lower() in doc.metadata["name"].lower() or doc.metadata["name"].lower() in title.lower():
                     final_results.append(doc)
                     break
             if len(final_results) == k:
                 break
 
-        # Pad with top retrieval if LLM returned fewer
+        # Pad if needed
         if len(final_results) < k:
             seen = {id(d) for d in final_results}
             for doc in docs:
@@ -91,12 +112,5 @@ Example format:
         return final_results
 
     except Exception as e:
-        print(f"⚠️ LLM re-ranking failed: {e}. Using retrieval fallback.")
+        print(f"⚠️ Groq failed: {e}. Using retrieval fallback.")
         return docs[:k]
-
-
-if __name__ == "__main__":
-    results = rag_recommend("Neural Network Engineer role involving AI and deep learning", k=5)
-    print("\nRecommended Assessments:\n")
-    for doc in results:
-        print(f"- {doc.metadata.get('name', 'Unknown')}")
