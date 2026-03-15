@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+pydantic
+pandas
+numpy
+sentence-transformers
+scikit-learn
+requests
+beautifulsoup4
+langchain
+langchain-community
+langchain-openai
+faiss-cpu
+openai

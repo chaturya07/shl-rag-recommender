@@ -1,0 +1,8 @@
+{
+  "model_name": "all-MiniLM-L6-v2",
+  "embedding_dimension": 384,
+  "num_assessments": 388,
+  "input_file": "data/shl_assessments_cleaned.csv",
+  "embeddings_file": "data/embeddings/embeddings.npy",
+  "metadata_file": "data/embeddings/metadata.pkl"
+}

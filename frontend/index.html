@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SHL Assessment Recommender</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, #2563eb 0, #0f172a 45%, #020617 100%);
+      color: #e5e7eb;
+      font-size: 18px; /* base font size increased */
+    }
+
+    .shell {
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 18px 24px 24px;
+    }
+
+    .page-title {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .page-title h1 {
+      margin: 0;
+      font-size: 2.1rem;
+      letter-spacing: 0.03em;
+    }
+
+    .page-title p {
+      margin: 6px 0 0;
+      font-size: 1rem;
+      color: #9ca3af;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.92);
+      border-radius: 16px;
+      padding: 14px 14px 14px;
+      box-shadow: 0 24px 45px rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      backdrop-filter: blur(18px);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      letter-spacing: 0.02em;
+      margin: 0;
+      color: #e5e7eb;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #9ca3af;
+    }
+
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      background: rgba(22, 101, 52, 0.18);
+      color: #bbf7d0;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .pill-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.8);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 18px;
+      min-height: calc(100vh - 140px);
+      align-items: stretch;
+    }
+
+    @media (max-width: 820px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .field-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.95rem;
+      color: #9ca3af;
+      margin-bottom: 6px;
+    }
+
+    .field-hint {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 12px 12px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top left, rgba(31, 41, 55, 0.9), rgba(15, 23, 42, 0.9));
+      color: #e5e7eb;
+      resize: vertical;
+      font-size: 1rem;
+      line-height: 1.4;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    textarea::placeholder {
+      color: #6b7280;
+    }
+
+    textarea:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5), 0 18px 40px rgba(15, 23, 42, 0.8);
+      background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.9), rgba(15, 23, 42, 0.96));
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .button-main {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 18px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: #f9fafb;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.7);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    }
+
+    .button-main:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 20px 40px rgba(37, 99, 235, 0.85);
+      filter: brightness(1.05);
+    }
+
+    .button-main:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 26px rgba(37, 99, 235, 0.7);
+    }
+
+    .button-main[disabled] {
+      cursor: default;
+      opacity: 0.7;
+      box-shadow: none;
+    }
+
+    .button-secondary {
+      border-radius: 999px;
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      background: transparent;
+      color: #9ca3af;
+      padding: 7px 12px;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .button-secondary span {
+      font-size: 0.9rem;
+    }
+
+    .button-secondary:hover {
+      background: rgba(55, 65, 81, 0.3);
+      border-color: rgba(148, 163, 184, 0.9);
+      color: #e5e7eb;
+      cursor: pointer;
+    }
+
+    .status-line {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #6b7280;
+    }
+
+    .status-dot.loading {
+      background: #facc15;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+    }
+
+    .status-dot.ready {
+      background: #22c55e;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+    }
+
+    .status-dot.error {
+      background: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+    }
+
+    .status-text-strong {
+      color: #e5e7eb;
+    }
+
+    .results-panel {
+      background: radial-gradient(circle at top right, rgba(15, 23, 42, 0.9), rgba(8, 12, 24, 0.96));
+      border-radius: 14px;
+      border: 1px solid rgba(55, 65, 81, 0.95);
+      padding: 12px 12px 10px;
+      display: flex;
+      flex-direction: column;
+      min-height: 190px;
+      max-height: 420px;
+      overflow: hidden;
+    }
+
+    .results-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .results-title {
+      font-size: 1rem;
+      color: #e5e7eb;
+    }
+
+    .results-caption {
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+
+    .results-table-wrapper {
+      margin-top: 6px;
+      border-radius: 10px;
+      overflow: auto;
+      border: 1px solid rgba(31, 41, 55, 0.9);
+      background: rgba(15, 23, 42, 0.96);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    thead {
+      background: linear-gradient(to right, rgba(30, 64, 175, 0.4), rgba(8, 47, 73, 0.9));
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      font-weight: 500;
+      color: #e5e7eb;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: rgba(15, 23, 42, 0.9);
+    }
+
+    tbody tr:nth-child(odd) {
+      background-color: rgba(17, 24, 39, 0.9);
+    }
+
+    tbody tr:hover {
+      background: rgba(30, 64, 175, 0.55);
+    }
+
+    .badge-score {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      background: rgba(8, 47, 73, 0.9);
+      color: #bfdbfe;
+    }
+
+    .badge-score span {
+      opacity: 0.85;
+    }
+
+    .match-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .match-excellent {
+      background: rgba(22, 101, 52, 0.3);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+
+    .match-good {
+      background: rgba(30, 64, 175, 0.3);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+    }
+
+    .match-fair {
+      background: rgba(113, 63, 18, 0.3);
+      color: #fcd34d;
+      border: 1px solid rgba(251, 191, 36, 0.4);
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .filter-label {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
+    select {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.95);
+      color: #e5e7eb;
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.18s ease;
+    }
+
+    select:focus {
+      border-color: #60a5fa;
+    }
+
+    select:hover {
+      border-color: rgba(148, 163, 184, 0.7);
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      z-index: 10;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(148, 163, 184, 0.3);
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .char-count {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .char-count.warning {
+      color: #fbbf24;
+    }
+
+    .external-link-icon {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-left: 4px;
+      opacity: 0.7;
+    }
+
+    a {
+      font-size: 0.95rem;
+    }
+    .link-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(37, 99, 235, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      color: #bfdbfe;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+    }
+
+    .link-button:hover {
+      background: rgba(37, 99, 235, 0.95);
+      color: #eff6ff;
+      box-shadow: 0 0 0 1px rgba(191, 219, 254, 0.4);
+      text-decoration: none;
+      transform: translateY(-0.5px);
+    }
+
+    .link-button:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    .empty-state {
+      font-size: 0.8rem;
+      color: #6b7280;
+      padding: 20px 16px 18px;
+      text-align: center;
+    }
+
+    .empty-state-strong {
+      color: #e5e7eb;
+    }
+
+    .error-text {
+      font-size: 0.95rem;
+      color: #fecaca;
+      margin-top: 6px;
+      padding: 8px 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 8px;
+      border-left: 3px solid #ef4444;
+    }
+
+    /* Export buttons */
+    .export-group {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .button-export {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: transparent;
+      color: #9ca3af;
+      padding: 5px 12px;
+      font-size: 0.82rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .button-export:hover {
+      background: rgba(55, 65, 81, 0.4);
+      color: #e5e7eb;
+      border-color: rgba(148, 163, 184, 0.8);
+    }
+
+    /* History sidebar */
+    .history-panel {
+      background: rgba(15, 23, 42, 0.85);
+      border-radius: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.8);
+      padding: 10px 12px;
+      margin-top: 12px;
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .history-title {
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    .history-clear {
+      font-size: 0.78rem;
+      color: #6b7280;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .history-clear:hover { color: #ef4444; }
+
+    .history-item {
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      color: #9ca3af;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 0.1s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .history-item:hover {
+      background: rgba(37, 99, 235, 0.2);
+      color: #e5e7eb;
+    }
+
+    .history-item-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-item-meta {
+      font-size: 0.75rem;
+      color: #4b5563;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .history-empty {
+      font-size: 0.8rem;
+      color: #4b5563;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .results-table-wrapper {
+      position: relative;
+    }
+
+    @media (max-width: 768px) {
+      .shell {
+        padding: 12px 16px;
+      }
+
+      .page-title h1 {
+        font-size: 1.5rem;
+      }
+
+      .layout {
+        gap: 12px;
+      }
+
+      textarea {
+        min-height: 120px;
+        font-size: 0.95rem;
+      }
+
+      .button-main {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .button-secondary {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .actions {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .results-table-wrapper {
+        overflow-x: auto;
+      }
+
+      table {
+        font-size: 0.85rem;
+      }
+
+      th, td {
+        padding: 8px 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="page-title">
+      <h1>SHL Assessment Recommendation Studio</h1>
+      <p>Paste a job description and explore the best‑fit SHL assessments side‑by‑side.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="title-block">
+          <p class="subtitle">
+            Describe the role or assessment need on the left and view ranked recommendations on the right.
+          </p>
+        </div>
+        <div class="pill">
+          <span class="pill-dot"></span>
+          Live · Local API
+        </div>
+      </div>
+
+      <div class="layout">
+        <!-- Top: JD / query input -->
+        <div>
+          <div class="field-label">
+            <span>Job description or role context</span>
+            <span class="field-hint">The richer the context, the better the match.</span>
+          </div>
+
+          <textarea id="query"
+            placeholder="For example: Senior HR Business Partner responsible for driving talent assessment, succession planning, and leadership development across a global organization..."
+            oninput="updateCharCount()"></textarea>
+
+          <div class="char-count" id="charCount">0 characters</div>
+
+          <div class="filter-group">
+            <span class="filter-label">Assessment type:</span>
+            <select id="typeFilter" onchange="filterResults()">
+              <option value="all">All Types</option>
+              <option value="Personality &amp; Behavior">Personality &amp; Behavior</option>
+              <option value="Cognitive">Cognitive</option>
+              <option value="Simulation">Simulation</option>
+              <option value="Technical Skills">Technical Skills</option>
+              <option value="Language">Language</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+
+          <div class="actions">
+            <button id="runButton" class="button-main" onclick="getRecommendations()">
+              <span>Recommend assessments</span>
+            </button>
+
+            <button class="button-secondary" type="button" onclick="prefillExample()">
+              <span>Try an example</span>
+            </button>
+          </div>
+
+          <div id="status" class="status-line" style="margin-top: 8px;">
+            <span class="status-dot"></span>
+            <span>Ready when you are.</span>
+          </div>
+          <div id="error" class="error-text" style="display: none;"></div>
+
+          <!-- Search History -->
+          <div class="history-panel">
+            <div class="history-header">
+              <span class="history-title">Recent searches</span>
+              <button class="history-clear" onclick="clearHistory()">Clear</button>
+            </div>
+            <div id="historyList">
+              <div class="history-empty">No searches yet.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom: recommendations table -->
+        <div class="results-panel">
+          <div class="results-header">
+            <div>
+              <div class="results-title">Recommended assessments</div>
+              <div class="results-caption" id="resultsCaption">Top matches ranked by semantic similarity.</div>
+            </div>
+          </div>
+
+          <!-- Export buttons (shown after results load) -->
+          <div class="export-group" id="exportGroup" style="display:none;">
+            <button class="button-export" onclick="exportResults('csv')">
+              ↓ CSV
+            </button>
+            <button class="button-export" onclick="exportResults('json')">
+              ↓ JSON
+            </button>
+          </div>
+
+          <div class="results-table-wrapper" style="position: relative;">
+            <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+              <div class="spinner"></div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th style="min-width: 210px;">Assessment</th>
+                  <th style="min-width: 120px;">Link</th>
+                  <th style="min-width: 90px;">Match score</th>
+                </tr>
+              </thead>
+              <tbody id="results">
+                <tr>
+                  <td colspan="3">
+                    <div class="empty-state">
+                      <span class="empty-state-strong">No recommendations yet.</span>
+                      Paste a description on the left and click
+                      <span class="empty-state-strong">“Recommend assessments”</span>.
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-detect API URL based on environment
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+      ? "http://127.0.0.1:8000/recommend"
+      : "https://shl-rag-api.onrender.com/recommend";  // UPDATE with your Render URL
+
+    const BASE_URL = API_URL.replace("/recommend", "");
+
+    // Session ID persisted in localStorage
+    let SESSION_ID = localStorage.getItem("shl_session_id");
+    if (!SESSION_ID) {
+      SESSION_ID = "sess_" + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem("shl_session_id", SESSION_ID);
+    }
+
+    // ---- History functions ----
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${BASE_URL}/history/${SESSION_ID}`);
+        if (!res.ok) return;
+        const items = await res.json();
+        renderHistory(items);
+      } catch (e) { /* silently fail */ }
+    }
+
+    function renderHistory(items) {
+      const list = document.getElementById("historyList");
+      if (!items || items.length === 0) {
+        list.innerHTML = '<div class="history-empty">No searches yet.</div>';
+        return;
+      }
+      list.innerHTML = items.map(item => `
+        <div class="history-item" onclick="rerunQuery('${item.query.replace(/'/g, "\\'")}')">
+          <span class="history-item-text">${item.query}</span>
+          <span class="history-item-meta">${item.result_count || 0} results</span>
+        </div>
+      `).join("");
+    }
+
+    function rerunQuery(query) {
+      document.getElementById("query").value = query;
+      updateCharCount();
+      getRecommendations();
+    }
+
+    async function clearHistory() {
+      try {
+        await fetch(`${BASE_URL}/history/${SESSION_ID}`, { method: "DELETE" });
+        renderHistory([]);
+      } catch (e) { /* silently fail */ }
+    }
+
+    // ---- Export functions ----
+    async function exportResults(format) {
+      if (!allResults || allResults.length === 0) return;
+      const query = document.getElementById("query").value.trim();
+
+      try {
+        const res = await fetch(`${BASE_URL}/export`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ results: allResults, query, format })
+        });
+
+        if (!res.ok) return;
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `shl_results.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        // Fallback: client-side export
+        if (format === "json") {
+          const content = JSON.stringify({ query, results: allResults }, null, 2);
+          downloadBlob(content, "shl_results.json", "application/json");
+        } else {
+          const headers = ["Assessment Name", "URL", "score", "assessment_type"];
+          const rows = allResults.map(r => headers.map(h => `"${(r[h] || "").toString().replace(/"/g, '""')}"`).join(","));
+          downloadBlob([headers.join(","), ...rows].join("\n"), "shl_results.csv", "text/csv");
+        }
+      }
+    }
+
+    function downloadBlob(content, filename, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function updateCharCount() {
+      const query = document.getElementById("query").value;
+      const charCount = document.getElementById("charCount");
+      const length = query.length;
+      
+      charCount.textContent = `${length} character${length !== 1 ? 's' : ''}`;
+      
+      if (length > 0 && length < 50) {
+        charCount.classList.add("warning");
+        charCount.textContent += " (add more detail for better results)";
+      } else {
+        charCount.classList.remove("warning");
+      }
+    }
+
+    function setStatus(state, message) {
+      const statusEl = document.getElementById("status");
+      const dot = statusEl.querySelector(".status-dot");
+      const text = statusEl.querySelector("span:last-child");
+
+      dot.classList.remove("loading", "ready", "error");
+      statusEl.classList.remove("status-line-error");
+
+      if (state === "loading") {
+        dot.classList.add("loading");
+      } else if (state === "ready") {
+        dot.classList.add("ready");
+      } else if (state === "error") {
+        dot.classList.add("error");
+      }
+
+      if (message) {
+        text.textContent = message;
+      }
+    }
+
+    function setError(message) {
+      const errorEl = document.getElementById("error");
+      if (message) {
+        errorEl.style.display = "block";
+        errorEl.textContent = message;
+      } else {
+        errorEl.style.display = "none";
+        errorEl.textContent = "";
+      }
+    }
+
+    function prefillExample() {
+      const example = "We are hiring a Talent Assessment Consultant to partner with HR and business leaders on selection, development and succession programs. The role requires strong experience with personality, cognitive and simulation-based assessments as well as data-driven recommendations.";
+      document.getElementById("query").value = example;
+      updateCharCount();
+    }
+
+    let allResults = [];
+
+    function getMatchLabel(score) {
+      if (score >= 0.75) return { label: "Excellent Match", class: "match-excellent" };
+      if (score >= 0.60) return { label: "Good Match", class: "match-good" };
+      return { label: "Fair Match", class: "match-fair" };
+    }
+
+    function filterResults() {
+      const typeFilter = document.getElementById("typeFilter").value;
+      const tbody = document.getElementById("results");
+      const resultsCaption = document.getElementById("resultsCaption");
+
+      if (!allResults || allResults.length === 0) {
+        return;
+      }
+
+      const filtered = typeFilter === "all" 
+        ? allResults 
+        : allResults.filter(item => item.assessment_type === typeFilter);
+
+      tbody.innerHTML = "";
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3">
+              <div class="empty-state">
+                <span class="empty-state-strong">No matches for this filter.</span>
+                Try selecting a different assessment type.
+              </div>
+            </td>
+          </tr>
+        `;
+        resultsCaption.textContent = `No ${typeFilter} assessments found`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const score = typeof item.score === "number" ? item.score : 0;
+        const percentage = Math.round(score * 100);
+        const match = getMatchLabel(score);
+        
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item["Assessment Name"]}</td>
+          <td>
+            <a class="link-button" href="${item["URL"]}" target="_blank" rel="noopener noreferrer">
+              Open
+              <svg class="external-link-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+              </svg>
+            </a>
+          </td>
+          <td>
+            <span class="match-badge ${match.class}">
+              ${percentage}% · ${match.label}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      const filterText = typeFilter !== "all" ? ` (${typeFilter})` : "";
+      resultsCaption.textContent = `Showing ${filtered.length} of ${allResults.length} matches${filterText}`;
+    }
+
+    async function getRecommendations() {
+      const queryInput = document.getElementById("query");
+      const tbody = document.getElementById("results");
+      const runButton = document.getElementById("runButton");
+      const loadingOverlay = document.getElementById("loadingOverlay");
+      const resultsCaption = document.getElementById("resultsCaption");
+
+      setError("");
+
+      const query = queryInput.value.trim();
+      if (!query) {
+        setStatus("error", "Please paste a job description or role summary first.");
+        setError("Your query is empty. Add a few sentences describing the role or assessment need.");
+        return;
+      }
+
+      if (query.length < 20) {
+        setStatus("error", "Query too short for accurate matching.");
+        setError("Please add more detail (at least 20 characters) for better recommendations.");
+        return;
+      }
+
+      try {
+        runButton.disabled = true;
+        if (loadingOverlay) loadingOverlay.style.display = "flex";
+        setStatus("loading", "Analyzing your description and matching assessments...");
+
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: query,
+            k: 50,
+            session_id: SESSION_ID
+          })
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          setStatus("error", "API error. Check that the FastAPI server is running.");
+          setError(text || "The API returned an error response.");
+          return;
+        }
+
+        const data = await response.json();
+        allResults = data;
+        tbody.innerHTML = "";
+
+        if (!Array.isArray(data) || data.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="3">
+                <div class="empty-state">
+                  <span class="empty-state-strong">No matches were returned.</span>
+                  Try adding more detail about the role, skills, or context.
+                </div>
+              </td>
+            </tr>
+          `;
+          setStatus("ready", "No matches for this query. Try adjusting your description.");
+          resultsCaption.textContent = "No results found.";
+          return;
+        }
+
+        filterResults();
+        setStatus("ready", `Found ${data.length} recommended assessments.`);
+        document.getElementById("exportGroup").style.display = "flex";
+        loadHistory(); // refresh history panel
+      } catch (err) {
+        setStatus("error", "Could not reach the API. Is it running on port 8000?");
+        setError(err && err.message ? err.message : "Unknown error while calling the API.");
+      } finally {
+        runButton.disabled = false;
+        if (loadingOverlay) loadingOverlay.style.display = "none";
+      }
+    }
+
+    // Keyboard shortcut: Ctrl/Cmd + Enter to search
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById("query").addEventListener("keydown", function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+          e.preventDefault();
+          getRecommendations();
+        }
+      });
+      loadHistory(); // load history on page load
+    });
+  </script>
+</body>
+</html>

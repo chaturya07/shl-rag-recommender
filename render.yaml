@@ -1,0 +1,12 @@
+services:
+  # Backend API
+  - type: web
+    name: shl-rag-api
+    env: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: OPENAI_API_KEY
+        sync: false  # Set this in Render dashboard (optional)
