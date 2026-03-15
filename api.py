@@ -140,6 +140,9 @@ def recommend_assessments(req: QueryRequest):
             )
 
         print(f"✅ [{method}] {len(results_list)} results in {query_time_ms:.0f}ms")
+        # Add method to first result so frontend can detect it
+        if results_list:
+            results_list[0]["method"] = method
         return results_list
 
     except Exception as e:

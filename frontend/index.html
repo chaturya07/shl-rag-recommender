@@ -732,7 +732,7 @@
           <div class="results-header">
             <div>
               <div class="results-title">Recommended assessments</div>
-              <div class="results-caption" id="resultsCaption">Top matches ranked by semantic similarity.</div>
+              <div class="results-caption" id="resultsCaption">Ranked by relevance to your query.</div>
             </div>
           </div>
 
@@ -1063,6 +1063,9 @@
 
         filterResults();
         setStatus("ready", `Found ${data.length} recommended assessments.`);
+        const method = data[0] && data[0].method ? data[0].method : "";
+        document.getElementById("resultsCaption").textContent = 
+          method === "rag" ? `${data.length} results · RAG re-ranked` : `${data.length} results · ranked by relevance`;
         document.getElementById("exportGroup").style.display = "flex";
         loadHistory(); // refresh history panel
       } catch (err) {
