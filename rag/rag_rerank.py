@@ -2,61 +2,60 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
 from groq import Groq
 
-# Load lightweight data at startup (no heavy ML models)
-_df = None
-_emb = None
-_query_model = None
+# Load data at startup - lightweight, just CSV + numpy
+df = pd.read_csv("data/shl_assessments_cleaned.csv")
+emb = np.load("data/embeddings/embeddings.npy")
+
+# TF-IDF for query encoding - no heavy ML model needed
+_tfidf = None
+_tfidf_matrix = None
 
 
-def get_data():
-    global _df, _emb
-    if _df is None:
-        _df = pd.read_csv("data/shl_assessments_cleaned.csv")
-        _emb = np.load("data/embeddings/embeddings.npy")
-    return _df, _emb
+def get_tfidf():
+    global _tfidf, _tfidf_matrix
+    if _tfidf is None:
+        _tfidf = TfidfVectorizer(stop_words="english", max_features=5000)
+        corpus = df["Assessment Name"].fillna("").tolist()
+        _tfidf_matrix = _tfidf.fit_transform(corpus)
+    return _tfidf, _tfidf_matrix
 
 
-def get_query_model():
-    global _query_model
-    if _query_model is None:
-        from sentence_transformers import SentenceTransformer
-        _query_model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _query_model
+def retrieve_top_k(query: str, k: int = 20):
+    """Retrieve top k using TF-IDF similarity - no heavy model needed."""
+    tfidf, tfidf_matrix = get_tfidf()
+    query_vec = tfidf.transform([query])
+    sims = cosine_similarity(query_vec, tfidf_matrix)[0]
+
+    df2 = df.copy()
+    df2["score"] = sims
+    df2 = df2[df2["assessment_type"].notna()]
+    top = df2.sort_values("score", ascending=False).head(k)
+    return top
 
 
 def rag_recommend(query: str, k: int = 5):
     """
-    1. Retrieve top 20 using pre-computed embeddings (no FAISS, no heavy model load at startup)
+    1. Retrieve top 20 using TF-IDF (lightweight, no GPU/heavy model)
     2. Re-rank using Groq LLM
     3. Fallback to top retrieval if LLM fails
     """
-    df, emb = get_data()
-    model = get_query_model()
+    top20 = retrieve_top_k(query, k=20)
 
-    # Encode query and retrieve top 20
-    q_emb = model.encode([query])
-    sims = cosine_similarity(q_emb, emb)[0]
-    df2 = df.copy()
-    df2["score"] = sims
-    df2 = df2[df2["assessment_type"].notna()]
-    top20 = df2.sort_values("score", ascending=False).head(20)
-
-    # Build simple doc-like objects for compatibility
     class Doc:
         def __init__(self, row):
-            self.page_content = f"{row['Assessment Name']}: {row.get('description', row['Assessment Name'])}"
+            self.page_content = str(row["Assessment Name"])
             self.metadata = {
                 "name": row["Assessment Name"],
                 "url": row["URL"],
                 "assessment_type": row.get("assessment_type", "General"),
-                "score": row["score"]
+                "score": float(row["score"])
             }
 
     docs = [Doc(row) for _, row in top20.iterrows()]
 
-    # Try Groq re-ranking
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         print("⚠️ GROQ_API_KEY not set. Using retrieval only.")
@@ -70,7 +69,7 @@ def rag_recommend(query: str, k: int = 5):
 
 User query: "{query}"
 
-Below are candidate SHL assessments:
+Candidate SHL assessments:
 {context}
 
 Select the {k} most relevant assessments for this job role.
@@ -99,7 +98,6 @@ Return ONLY a numbered list of assessment names, nothing else."""
             if len(final_results) == k:
                 break
 
-        # Pad if needed
         if len(final_results) < k:
             seen = {id(d) for d in final_results}
             for doc in docs:

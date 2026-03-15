@@ -4,6 +4,4 @@ pydantic
 pandas
 numpy
 scikit-learn
-sentence-transformers
 groq
-requests
