@@ -16,14 +16,17 @@
       min-height: 100vh;
       background: radial-gradient(circle at top left, #2563eb 0, #0f172a 45%, #020617 100%);
       color: #e5e7eb;
-      font-size: 18px; /* base font size increased */
+      font-size: 18px;
+      overflow-x: hidden;
     }
 
     .shell {
       width: 100%;
-      max-width: 1400px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 18px 24px 24px;
+      padding: 18px 16px 24px;
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
 
     .page-title {
@@ -101,9 +104,10 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 1.05fr 1fr;
-      gap: 18px;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+      gap: 16px;
       align-items: start;
+      width: 100%;
     }
 
     @media (max-width: 700px) {
