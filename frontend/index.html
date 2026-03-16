@@ -285,7 +285,8 @@
     .results-table-wrapper {
       margin-top: 6px;
       border-radius: 10px;
-      overflow: auto;
+      overflow-x: hidden;
+      overflow-y: auto;
       border: 1px solid rgba(31, 41, 55, 0.9);
       background: rgba(15, 23, 42, 0.96);
       max-height: 60vh;
@@ -294,18 +295,25 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
+      table-layout: fixed;
     }
+
+    th, td {
+      padding: 9px 10px;
+      text-align: left;
+      white-space: normal;
+      word-break: break-word;
+      overflow: hidden;
+    }
+
+    /* Column widths */
+    th:nth-child(1), td:nth-child(1) { width: 50%; }
+    th:nth-child(2), td:nth-child(2) { width: 15%; }
+    th:nth-child(3), td:nth-child(3) { width: 35%; }
 
     thead {
       background: linear-gradient(to right, rgba(30, 64, 175, 0.4), rgba(8, 47, 73, 0.9));
-    }
-
-    th,
-    td {
-      padding: 9px 10px;
-      text-align: left;
-      white-space: nowrap;
     }
 
     th {
@@ -753,9 +761,9 @@
             <table>
               <thead>
                 <tr>
-                  <th style="min-width: 210px;">Assessment</th>
-                  <th style="min-width: 120px;">Link</th>
-                  <th style="min-width: 90px;">Match score</th>
+                  <th>Assessment</th>
+                  <th>Link</th>
+                  <th>Match score</th>
                 </tr>
               </thead>
               <tbody id="results">
