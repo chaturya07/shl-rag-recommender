@@ -774,6 +774,10 @@
         </div>
       </div>
     </div>
+    <p style="text-align:center; font-size:0.75rem; color:#4b5563; margin-top:10px; padding-bottom:8px;">
+      Assessment data sourced from <a href="https://www.shl.com" target="_blank" rel="noopener noreferrer" style="color:#6b7280; text-decoration:underline;">SHL's public catalog</a>. 
+      This tool is not affiliated with or endorsed by SHL. Built for educational purposes.
+    </p>
   </div>
 
   <script>
@@ -851,18 +855,18 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `shl_results.${format}`;
+        a.download = `results.${format}`;
         a.click();
         URL.revokeObjectURL(url);
       } catch (e) {
         // Fallback: client-side export
         if (format === "json") {
           const content = JSON.stringify({ query, results: allResults }, null, 2);
-          downloadBlob(content, "shl_results.json", "application/json");
+          downloadBlob(content, "results.json", "application/json");
         } else {
           const headers = ["Assessment Name", "URL", "score", "assessment_type"];
           const rows = allResults.map(r => headers.map(h => `"${(r[h] || "").toString().replace(/"/g, '""')}"`).join(","));
-          downloadBlob([headers.join(","), ...rows].join("\n"), "shl_results.csv", "text/csv");
+          downloadBlob([headers.join(","), ...rows].join("\n"), "results.csv", "text/csv");
         }
       }
     }
