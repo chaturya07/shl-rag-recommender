@@ -12,9 +12,9 @@ import pandas as pd
 from database import save_search, get_history, clear_history, get_analytics_summary
 
 app = FastAPI(
-    title="SHL Assessment RAG Recommendation API",
+    title="Assessment RAG Recommendation API",
     version="2.0.0",
-    description="RAG-based API to recommend SHL assessments using retrieval and LLM re-ranking."
+    description="RAG-based API to recommend assessments using retrieval and LLM re-ranking."
 )
 
 app.add_middleware(
@@ -61,7 +61,7 @@ def rag_recommend_with_fallback(query: str, k: int = 10, assessment_type: Option
             results.append({
                 "Assessment Name": doc.metadata.get("name", "Unknown"),
                 "URL": doc.metadata.get("url", ""),
-                "score": 0.95,
+                "score": doc.metadata.get("score", 0.0),
                 "assessment_type": doc.metadata.get("assessment_type", "General")
             })
 
