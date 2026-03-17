@@ -1110,6 +1110,12 @@
         }
       });
       loadHistory(); // load history on page load
+
+      // Wake up Render free tier on page load to avoid cold start CORS errors
+      setStatus("loading", "Connecting to API...");
+      fetch(`${BASE_URL}/health`)
+        .then(() => setStatus("ready", "API ready."))
+        .catch(() => setStatus("error", "API is waking up, please wait 30s and try again."));
     });
   </script>
 </body>
