@@ -2,30 +2,30 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
 from groq import Groq
 
-# Load lightweight data at startup
+# Load data at startup (lightweight)
 df = pd.read_csv("data/shl_assessments_cleaned.csv")
-emb = np.load("data/embeddings/embeddings.npy")
 
-# Lazy-load the embedding model only on first request
-_model = None
+# Build TF-IDF index over assessment text — no heavy model needed
+_tfidf = None
+_tfidf_matrix = None
 
-
-def get_model():
-    global _model
-    if _model is None:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
-        print("✅ Embedding model loaded")
-    return _model
+def get_tfidf():
+    global _tfidf, _tfidf_matrix
+    if _tfidf is None:
+        corpus = df["text_for_embedding"].fillna("").tolist()
+        _tfidf = TfidfVectorizer(ngram_range=(1, 2), max_features=8000)
+        _tfidf_matrix = _tfidf.fit_transform(corpus)
+        print("✅ TF-IDF index built")
+    return _tfidf, _tfidf_matrix
 
 
 def retrieve_top_k(query: str, k: int = 20):
-    """Retrieve top k using pre-computed embeddings + sentence-transformers query encoding."""
-    model = get_model()
-    q_emb = model.encode([query])
-    sims = cosine_similarity(q_emb, emb)[0]
+    tfidf, matrix = get_tfidf()
+    q_vec = tfidf.transform([query])
+    sims = cosine_similarity(q_vec, matrix)[0]
 
     df2 = df.copy()
     df2["score"] = sims
@@ -35,9 +35,9 @@ def retrieve_top_k(query: str, k: int = 20):
 
 def rag_recommend(query: str, k: int = 5):
     """
-    1. Retrieve top 20 using semantic embeddings
+    1. Retrieve top 20 via TF-IDF (lightweight, no OOM)
     2. Re-rank using Groq LLM
-    3. Fallback to retrieval if LLM fails
+    3. Fallback to retrieval order if LLM fails
     """
     top20 = retrieve_top_k(query, k=20)
 
@@ -103,14 +103,11 @@ Return ONLY a numbered list of assessment names, nothing else."""
                 if len(final_results) == k:
                     break
 
-        # Assign rank-based scores so position reflects relevance
-        # Top result gets the highest original cosine score, rest scale down
+        # Rank-based scores: top result keeps its score, each rank drops ~3%
         if final_results:
-            top_score = final_results[0].metadata["score"]
+            top_score = max(final_results[0].metadata["score"], 0.3)
             for i, doc in enumerate(final_results):
-                # Blend: keep cosine score but apply rank penalty
-                rank_factor = 1.0 - (i * 0.03)  # each rank drops ~3%
-                doc.metadata["score"] = round(min(top_score * rank_factor, 0.99), 4)
+                doc.metadata["score"] = round(min(top_score * (1.0 - i * 0.03), 0.99), 4)
 
         print(f"✅ Groq re-ranking complete ({len(final_results)} results)")
         return final_results
