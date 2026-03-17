@@ -2,45 +2,42 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
 from groq import Groq
 
-# Load data at startup - lightweight, just CSV + numpy
+# Load lightweight data at startup
 df = pd.read_csv("data/shl_assessments_cleaned.csv")
 emb = np.load("data/embeddings/embeddings.npy")
 
-# TF-IDF for query encoding - no heavy ML model needed
-_tfidf = None
-_tfidf_matrix = None
+# Lazy-load the embedding model only on first request
+_model = None
 
 
-def get_tfidf():
-    global _tfidf, _tfidf_matrix
-    if _tfidf is None:
-        _tfidf = TfidfVectorizer(stop_words="english", max_features=5000)
-        corpus = df["Assessment Name"].fillna("").tolist()
-        _tfidf_matrix = _tfidf.fit_transform(corpus)
-    return _tfidf, _tfidf_matrix
+def get_model():
+    global _model
+    if _model is None:
+        from sentence_transformers import SentenceTransformer
+        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        print("✅ Embedding model loaded")
+    return _model
 
 
 def retrieve_top_k(query: str, k: int = 20):
-    """Retrieve top k using TF-IDF similarity - no heavy model needed."""
-    tfidf, tfidf_matrix = get_tfidf()
-    query_vec = tfidf.transform([query])
-    sims = cosine_similarity(query_vec, tfidf_matrix)[0]
+    """Retrieve top k using pre-computed embeddings + sentence-transformers query encoding."""
+    model = get_model()
+    q_emb = model.encode([query])
+    sims = cosine_similarity(q_emb, emb)[0]
 
     df2 = df.copy()
     df2["score"] = sims
     df2 = df2[df2["assessment_type"].notna()]
-    top = df2.sort_values("score", ascending=False).head(k)
-    return top
+    return df2.sort_values("score", ascending=False).head(k)
 
 
 def rag_recommend(query: str, k: int = 5):
     """
-    1. Retrieve top 20 using TF-IDF (lightweight, no GPU/heavy model)
+    1. Retrieve top 20 using semantic embeddings
     2. Re-rank using Groq LLM
-    3. Fallback to top retrieval if LLM fails
+    3. Fallback to retrieval if LLM fails
     """
     top20 = retrieve_top_k(query, k=20)
 
@@ -69,7 +66,7 @@ def rag_recommend(query: str, k: int = 5):
 
 User query: "{query}"
 
-Candidate SHL assessments:
+Candidate assessments:
 {context}
 
 Select the {k} most relevant assessments for this job role.
@@ -105,6 +102,15 @@ Return ONLY a numbered list of assessment names, nothing else."""
                     final_results.append(doc)
                 if len(final_results) == k:
                     break
+
+        # Assign rank-based scores so position reflects relevance
+        # Top result gets the highest original cosine score, rest scale down
+        if final_results:
+            top_score = final_results[0].metadata["score"]
+            for i, doc in enumerate(final_results):
+                # Blend: keep cosine score but apply rank penalty
+                rank_factor = 1.0 - (i * 0.03)  # each rank drops ~3%
+                doc.metadata["score"] = round(min(top_score * rank_factor, 0.99), 4)
 
         print(f"✅ Groq re-ranking complete ({len(final_results)} results)")
         return final_results
